@@ -33,19 +33,24 @@ function LDAPConnection(uri::AbstractString; protocol::LDAPVersion=LDAP_VERSION3
     err = ldap_initialize(ldp_handle_ref, uri)
     error_check(err)
     result = LDAPConnection(ldp_handle_ref[], uri)
-    set_protocol_version(result, protocol)
+    set_option(result, LDAP_OPT_PROTOCOL_VERSION, protocol)
+    if URL(uri).scheme == LDAPS_PROTOCOL
+        set_option(result, LDAP_OPT_X_TLS_REQUIRE_CERT, LDAP_OPT_X_TLS_NEVER)
+        set_option(result, LDAP_OPT_X_TLS_NEWCTX, 0)
+    end
     return result
 end
 
-function set_protocol_version(ldap::LDAPConnection, protocol::LDAPVersion)
-    err = ldap_set_option(ldap.handle, LDAP_OPT_PROTOCOL_VERSION, protocol)
+function set_option(ldap::LDAPConnection, option::LDAPOption, value)
+    err = ldap_set_option(ldap.handle, option, value)
     error_check(err)
 end
 
-function get_protocol_version(ldap::LDAPConnection)
+function get_option(ldap::LDAPConnection, option::LDAPOption)
     out_int = Ref{Cint}(0)
-    err = ldap_get_option(ldap.handle, LDAP_OPT_PROTOCOL_VERSION, out_int)
-    return LDAPVersion(out_int[])
+    err = ldap_get_option(ldap.handle, option, out_int)
+    error_check(err)
+    return out_int[]
 end
 
 @inline parse_opt_string(str::Cstring) = str == C_NULL ? nothing : unsafe_string(str)
